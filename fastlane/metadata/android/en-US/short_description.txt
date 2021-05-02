@@ -1,0 +1,1 @@
+Place letters to create intersecting words as quickly as possible.
