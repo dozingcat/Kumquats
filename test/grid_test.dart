@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:wordgrid/grid.dart';
+import 'package:kumquats/grid.dart';
 
 
 void main() {
