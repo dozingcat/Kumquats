@@ -75,6 +75,7 @@ enum IllegalWordHighlightMode {
 
 final illegalWordHighlightModePrefsKey = "illegal_word_highlight";
 final numTilesPrefsKey = "tiles_per_game";
+final qHandlingPrefsKey = "q_tiles";
 final numBestTimesToStore = 5;
 
 String bestTimesPrefsKey(int numTiles) => "best_times.${numTiles}";
@@ -266,6 +267,9 @@ class _MyHomePageState extends State<MyHomePage> {
     final highlightStr = this.preferences.getString(illegalWordHighlightModePrefsKey) ?? '';
     this.illegalWordHighlightMode = IllegalWordHighlightMode.values.firstWhere(
             (s) => s.toString() == highlightStr, orElse: () => IllegalWordHighlightMode.always);
+    final qStr = this.preferences.getString(qHandlingPrefsKey) ?? '';
+    this.rules.qHandling = QTileHandling.values.firstWhere(
+            (s) => s.toString() == qStr, orElse: () => QTileHandling.qOrQu);
     this.startGame(letterFrequencies);
   }
 
@@ -658,8 +662,12 @@ class _MyHomePageState extends State<MyHomePage> {
     return newBestTimes;
   }
 
-  Widget letterTile(String letter, double cellSize, {invalid = false}) {
+  Widget letterTile(String letter, double cellSize, GridRules rules, {invalid = false}) {
     final background = invalid ? invalidTileBackgroundColor : tileBackgroundColor;
+    final tileContent = (letter == "Q" && rules.qHandling == QTileHandling.qOrQu) ?
+        Text("Q/QU", textAlign: TextAlign.center, style: TextStyle(color: tileTextColor, fontSize: cellSize * 0.4))
+        :
+        Text(letter, textAlign: TextAlign.center, style: TextStyle(color: tileTextColor, fontSize: cellSize * 0.8));
     return Container(width: cellSize, height: cellSize,
         decoration: BoxDecoration(
             color: background,
@@ -669,7 +677,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 width: cellSize * 0.02,
             ),
         ),
-        child: Text(letter, textAlign: TextAlign.center, style: TextStyle(color: tileTextColor, fontSize: cellSize * 0.8)));
+        child: tileContent);
   }
 
   List<Widget> gridLines(final Layout layout) {
@@ -720,7 +728,7 @@ class _MyHomePageState extends State<MyHomePage> {
               onPanStart: (event) => gridTileDragStart(event, x, y),
               onPanUpdate: gridTileDragUpdate,
               onPanEnd: gridTileDragEnd,
-              child: letterTile(grid.atXY(x, y), layout.gridTileSize, invalid: invalid)))));
+              child: letterTile(grid.atXY(x, y), layout.gridTileSize, rules, invalid: invalid)))));
         }
       }
     }
@@ -766,7 +774,7 @@ class _MyHomePageState extends State<MyHomePage> {
           onPanStart: (event) => rackTileDragStart(event, rt),
           onPanUpdate: rackTileDragUpdate,
           onPanEnd: rackTileDragEnd,
-          child: letterTile(rt.letter, layout.rackTileSize)
+          child: letterTile(rt.letter, layout.rackTileSize, rules)
         )
     ));
   }
@@ -799,7 +807,7 @@ class _MyHomePageState extends State<MyHomePage> {
       curve: Curves.ease,
       duration: Duration(milliseconds: 300),
       onEnd: animationDone,
-      child: letterTile(animTile.tile.letter, layout.rackTileSize),
+      child: letterTile(animTile.tile.letter, layout.rackTileSize, rules),
       builder: (BuildContext context, Offset position, Widget? child) {
         return Positioned(
           left: position.dx,
@@ -822,7 +830,7 @@ class _MyHomePageState extends State<MyHomePage> {
       curve: Curves.ease,
       duration: Duration(milliseconds: 300),
       onEnd: animationDone,
-      child: letterTile(grid.atXY(dest.x, dest.y), layout.gridTileSize),
+      child: letterTile(grid.atXY(dest.x, dest.y), layout.gridTileSize, rules),
       builder: (BuildContext context, Offset position, Widget? child) {
         return Positioned(
           left: position.dx,
@@ -871,7 +879,7 @@ class _MyHomePageState extends State<MyHomePage> {
     return Positioned(
         left: this.dragTile!.currentPosition.dx - tileSize / 2,
         top: this.dragTile!.currentPosition.dy - tileSize / 2,
-        child: letterTile(this.dragTile!.letter, tileSize));
+        child: letterTile(this.dragTile!.letter, tileSize, rules));
   }
 
   Widget _paddingAll(final double paddingPx, final Widget child) {
@@ -1044,6 +1052,26 @@ class _MyHomePageState extends State<MyHomePage> {
       ]);
     };
 
+    final makeQRow = () {
+      return TableRow(children: [CheckboxListTile(
+        dense: true,
+        title: Text("Q can be used as QU", style: TextStyle(fontSize: baseFontSize)),
+        isThreeLine: false,
+        onChanged: (bool? checked) async {
+          final q = checked == true ? QTileHandling.qOrQu : QTileHandling.qOnly;
+          setState(() {
+            rules.qHandling = q;
+            if (gameMode == GameMode.in_progress) {
+              invalidLetterCoords = computeInvalidLetterCoords();
+            }
+          });
+          SharedPreferences prefs = await SharedPreferences.getInstance();
+          prefs.setString(qHandlingPrefsKey, q.toString());
+        },
+        value: rules.qHandling == QTileHandling.qOrQu,
+      )]);
+    };
+
     return Container(
         width: double.infinity,
         height: double.infinity,
@@ -1072,8 +1100,10 @@ class _MyHomePageState extends State<MyHomePage> {
                           makeIllegalHighlightOptionRow('When all tiles are placed', IllegalWordHighlightMode.all_tiles_played),
                           makeIllegalHighlightOptionRow('Never', IllegalWordHighlightMode.never),
                           TableRow(children: [Text("")]),
+                          makeQRow(),
                         ],
                       ),
+                      SizedBox(height: 30),
                       ElevatedButton(
                         style: raisedButtonStyle,
                         onPressed: _closePreferences,
