@@ -223,6 +223,7 @@ class _MyHomePageState extends State<MyHomePage> {
   var illegalWordHighlightMode = IllegalWordHighlightMode.always;
 
   LetterGrid grid = LetterGrid(1, 1);
+  GridRules rules = GridRules(qHandling: QTileHandling.qOrQu);
   List<RackTile> rackTiles = [];
   List<AnimatedRackTile> animatedRackTiles = [];
   List<AnimatedGridTile> animatedGridTiles = [];
@@ -474,6 +475,10 @@ class _MyHomePageState extends State<MyHomePage> {
     handleDragEnd(event);
   }
 
+  Set<Coord> computeInvalidLetterCoords() {
+    return this.grid.coordinatesWithInvalidWords(this.dictionary, rules);
+  }
+
   void handleDragEnd(DragEndDetails event) {
     final displaySize = MediaQuery.of(context).size;
     final layout = layoutForDisplaySize(displaySize);
@@ -535,7 +540,7 @@ class _MyHomePageState extends State<MyHomePage> {
     }
     setState(() {
       this.dragTile = null;
-      this.invalidLetterCoords = this.grid.coordinatesWithInvalidWords(this.dictionary);
+      this.invalidLetterCoords = computeInvalidLetterCoords();
     });
   }
 
@@ -592,14 +597,14 @@ class _MyHomePageState extends State<MyHomePage> {
         this.rackTiles.isEmpty &&
         this.bagIndex < this.lettersInGame &&
         this.grid.connectedLetterGroups().length == 1 &&
-        this.grid.coordinatesWithInvalidWords(this.dictionary).isEmpty) {
+        this.computeInvalidLetterCoords().isEmpty) {
       drawTileFromBag();
       this.scheduleDrawTile(inGameNewTileDelay);
     }
   }
 
   void checkForGameOver() async {
-    if (allTilesPlaced() && this.grid.coordinatesWithInvalidWords(this.dictionary).isEmpty) {
+    if (allTilesPlaced() && computeInvalidLetterCoords().isEmpty) {
       this.gameStopwatch.stop();
       await this.updateBestTimes(this.gameStopwatch.elapsedMilliseconds);
       setState(() {
