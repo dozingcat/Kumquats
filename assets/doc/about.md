@@ -29,6 +29,7 @@ The list of valid words is similar to the word list used for Scrabble tournament
 to know the more obscure words like AA, AE, OD, QI, and ZA. By default, letter sequences that
 don't form valid words are highlighted in red. For increased difficulty, in the preferences screen
 you can choose to highlight invalid words only when all tiles have been placed, or not at all.
+You can also choose whether Q tiles can be treated as QU, which makes them easier to play.
 
 ![](resource:assets/doc/obscure.png)
 

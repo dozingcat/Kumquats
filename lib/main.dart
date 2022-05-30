@@ -370,7 +370,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
     final maxGridWidth = layout.numXCells * layout.pixelsPerGridCell() + layout.gridLineWidth;
     final maxGridHeight = layout.numYCells * layout.pixelsPerGridCell() + layout.gridLineWidth;
-    final statusHeight = 0.06 * displaySize.longestSide;
+    final statusHeight = (0.06 * displaySize.longestSide).clamp(40, 80);
     if (displaySize.height >= displaySize.width) {
       layout.availableGridSize = Size(displaySize.width, displaySize.height * 0.67);
       layout.gridRect = Rect.fromLTRB(
@@ -854,6 +854,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Widget statusArea(final Layout layout) {
     final fontSize = layout.statusRect.height / 2;
+    final buttonScale = max(1.0, layout.statusRect.height / 50);
     return Positioned(
         left: layout.statusRect.left,
         top: layout.statusRect.top,
@@ -862,13 +863,13 @@ class _MyHomePageState extends State<MyHomePage> {
         child: Container(
           color: statusBackgroundColor,
           child: Row(children: [
-            Container(width: layout.statusRect.width / 20),
+            Container(width: layout.statusRect.width * 0.05),
             Text("${this.grid.numberOfFilledCells()} / ${this.lettersInGame}", style: TextStyle(fontSize: fontSize)),
             Expanded(child: Container()),
             Text(formattedElapsedTime(), style: TextStyle(fontSize: fontSize)),
             Expanded(child: Container()),
-            ElevatedButton(onPressed: _showMenu, child: Text("Menu")),
-            Container(width: layout.statusRect.width / 20),
+            Transform.scale(scale: buttonScale, child: ElevatedButton(onPressed: _showMenu, child: Text("Menu"))),
+            Container(width: layout.statusRect.width * 0.05),
           ]),
         )
       );
@@ -1013,9 +1014,9 @@ class _MyHomePageState extends State<MyHomePage> {
 
     final makeGameLengthRow = () {
       final menuItemStyle = TextStyle(
-          fontSize: baseFontSize * 0.9,
+          fontSize: baseFontSize,
           fontWeight: FontWeight.normal,
-          color: Colors.blue,
+          color: Colors.blue[700],
       );
       return _paddingAll(0, Row(children:[
         Text('Game length:', style: TextStyle(fontSize: 16)),
@@ -1160,8 +1161,8 @@ class _MyHomePageState extends State<MyHomePage> {
     showAboutDialog(
       context: context,
       applicationName: 'Kumquats',
-      applicationVersion: '1.0.0',
-      applicationLegalese: '© 2021 Brian Nenninger',
+      applicationVersion: '1.1.0',
+      applicationLegalese: '© 2021-2022 Brian Nenninger',
       children: [
         Container(height: 15),
         MarkdownBody(
