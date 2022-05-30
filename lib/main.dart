@@ -901,8 +901,8 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Widget _mainMenuDialog(final BuildContext context, final Size displaySize) {
     final minDim = displaySize.shortestSide;
-
-    return Container(
+    final scale = (minDim / 450).clamp(1.0, 1.5);
+    return Transform.scale(scale: scale, child: Container(
       width: double.infinity,
       height: double.infinity,
       child: Center(
@@ -914,7 +914,7 @@ class _MyHomePageState extends State<MyHomePage> {
               _paddingAll(5, Text(
                   'Kumquats!',
                   style: TextStyle(
-                    fontSize: minDim / 18,
+                    fontSize: 24,
                   )
               )),
               Table(
@@ -932,13 +932,13 @@ class _MyHomePageState extends State<MyHomePage> {
           ),
         ),
       ),
-    ));
+    )));
   }
 
   Widget _gameOverDialog(final BuildContext context, final Size displaySize) {
     final minDim = displaySize.shortestSide;
-    final maxDim = displaySize.longestSide;
-    final titleFontSize = min(maxDim / 30, minDim / 15);
+    final scale = (minDim / 450).clamp(1.0, 1.5);
+
     final bestTimes = readBestTimesFromPrefs(bestTimesPrefsKey(this.lettersInGame));
     final padding = (minDim * 0.05).clamp(5.0, 10.0);
 
@@ -948,8 +948,8 @@ class _MyHomePageState extends State<MyHomePage> {
       final gameDateStr = DateFormat.yMMMd().format(gameTime);
       final isFromLastGame = this.gameStopwatch.elapsedMilliseconds == record.elapsedMillis;
       final textStyle = TextStyle(
-        fontSize: titleFontSize * 0.75,
-        fontWeight: isFromLastGame ? FontWeight.bold : FontWeight.normal,
+        fontSize: 18,
+        color: isFromLastGame ? Colors.blue[700] : Colors.black,
       );
       return TableRow(children: [
         _paddingAll(5, Text(elapsedTimeStr, style: textStyle)),
@@ -958,7 +958,7 @@ class _MyHomePageState extends State<MyHomePage> {
       ]);
     };
 
-    return Container(
+    return Transform.scale(scale: scale, child: Container(
       width: double.infinity,
       height: double.infinity,
       child: Center(
@@ -967,10 +967,10 @@ class _MyHomePageState extends State<MyHomePage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              _paddingAll(padding, Text(
+              _paddingAll(15, Text(
                   'Finished in ${formattedElapsedTime()}!',
                   style: TextStyle(
-                    fontSize: titleFontSize,
+                    fontSize: 24,
                   )
               )),
 
@@ -978,7 +978,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 _paddingAll(10, Text(
                     "Best Times (${this.lettersInGame} tiles)",
                     style: TextStyle(
-                      fontSize: titleFontSize * 0.85,
+                      fontSize: 20,
                     )
                 )),
                 Table(
@@ -1001,14 +1001,14 @@ class _MyHomePageState extends State<MyHomePage> {
           ),
         ),
       ),
-    );
+    ));
   }
 
   Widget _preferencesDialog(final BuildContext context, final Size displaySize) {
-    final minDim = displaySize.shortestSide;
-    final maxDim = displaySize.longestSide;
-    final titleFontSize = min(maxDim / 32.0, minDim / 18.0);
-    final baseFontSize = min(maxDim / 36.0, minDim / 20.0);
+    final scale = (displaySize.shortestSide / 450).clamp(1.0, 1.5);
+
+    final titleFontSize = 24.0;
+    final baseFontSize = 16.0;
     final numTilesInGame = readNumTilesPerGameFromPrefs();
 
     final makeGameLengthRow = () {
@@ -1018,7 +1018,7 @@ class _MyHomePageState extends State<MyHomePage> {
           color: Colors.blue,
       );
       return _paddingAll(0, Row(children:[
-        Text('Game length:', style: TextStyle(fontSize: baseFontSize)),
+        Text('Game length:', style: TextStyle(fontSize: 16)),
         Container(width: baseFontSize * 0.75),
         DropdownButton(
           value: numTilesInGame,
@@ -1072,14 +1072,13 @@ class _MyHomePageState extends State<MyHomePage> {
       )]);
     };
 
-    return Container(
+    return Transform.scale(scale: scale, child: Container(
         width: double.infinity,
         height: double.infinity,
         child: Center(
           child: Dialog(
             backgroundColor: dialogBackgroundColor,
-            // insetPadding: EdgeInsets.all(0),
-            child: Padding(padding: EdgeInsets.all(minDim * 0.03),
+            child: Padding(padding: EdgeInsets.all(20),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -1092,18 +1091,18 @@ class _MyHomePageState extends State<MyHomePage> {
                         defaultVerticalAlignment: TableCellVerticalAlignment.middle,
                         defaultColumnWidth: const IntrinsicColumnWidth(),
                         children: [
-                          TableRow(children: [Text("")]),
+                          TableRow(children: [SizedBox(height: 10)]),
                           TableRow(children: [makeGameLengthRow()]),
-                          TableRow(children: [Text("")]),
+                          TableRow(children: [SizedBox(height: 10)]),
                           TableRow(children: [Text('Highlight invalid words:', style: TextStyle(fontSize: baseFontSize))]),
                           makeIllegalHighlightOptionRow("Always", IllegalWordHighlightMode.always),
                           makeIllegalHighlightOptionRow('When all tiles are placed', IllegalWordHighlightMode.all_tiles_played),
                           makeIllegalHighlightOptionRow('Never', IllegalWordHighlightMode.never),
-                          TableRow(children: [Text("")]),
+                          TableRow(children: [SizedBox(height: 5)]),
                           makeQRow(),
                         ],
                       ),
-                      SizedBox(height: 30),
+                      SizedBox(height: 20),
                       ElevatedButton(
                         style: raisedButtonStyle,
                         onPressed: _closePreferences,
@@ -1115,7 +1114,7 @@ class _MyHomePageState extends State<MyHomePage> {
               ),
             ),
           ),
-        ));
+        )));
   }
 
   void _showMenu() {
@@ -1167,7 +1166,7 @@ class _MyHomePageState extends State<MyHomePage> {
         Container(height: 15),
         MarkdownBody(
           data: aboutText,
-          onTapLink: (text, href, title) => launch(href!),
+          onTapLink: (text, href, title) => launchUrl(Uri.parse(href!)),
           // https://github.com/flutter/flutter_markdown/issues/311
           listItemCrossAxisAlignment: MarkdownListItemCrossAxisAlignment.start,
         ),
