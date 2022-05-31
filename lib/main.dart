@@ -370,7 +370,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
     final maxGridWidth = layout.numXCells * layout.pixelsPerGridCell() + layout.gridLineWidth;
     final maxGridHeight = layout.numYCells * layout.pixelsPerGridCell() + layout.gridLineWidth;
-    final statusHeight = (0.06 * displaySize.longestSide).clamp(40, 80);
+    final statusHeight = (0.1 * displaySize.shortestSide).clamp(40, 80);
     if (displaySize.height >= displaySize.width) {
       layout.availableGridSize = Size(displaySize.width, displaySize.height * 0.67);
       layout.gridRect = Rect.fromLTRB(
@@ -854,7 +854,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Widget statusArea(final Layout layout) {
     final fontSize = layout.statusRect.height / 2;
-    final buttonScale = max(1.0, layout.statusRect.height / 50);
+    final buttonScale = max(1.0, layout.statusRect.height / 60);
     return Positioned(
         left: layout.statusRect.left,
         top: layout.statusRect.top,
