@@ -178,6 +178,18 @@ final letterFrequencies = {
   2: ["J", "K", "Q", "X", "Z"],
 };
 
+Map<int, List<String>> calculateFrequencies(Map<int, List<String>> frequencies, int numtiles) {
+  const poolsize = 144;
+  final divfactor = poolsize ~/ numtiles;
+  var newfrequencies = Map<int, List<String>>();
+  for (var entry in frequencies.entries) {
+    var count = (entry.key / divfactor).ceil();
+    newfrequencies.putIfAbsent(count, () => []);
+    newfrequencies[count]?.addAll(entry.value);
+  }
+  return newfrequencies;
+}
+
 final hiriganaFrequencies = {
   2: "あいうえおかきくけこさしすせそたちつてとはひふへほまみむめもやゆよらりるれろわをん".split(''),
 };
@@ -304,10 +316,11 @@ class _MyHomePageState extends State<MyHomePage> {
   void startGame(Map<int, List<String>> frequencies) {
     this.gameMode = GameMode.starting;
     this.lettersInGame = readNumTilesPerGameFromPrefs();
+    final scaledfrequencies = calculateFrequencies(frequencies, this.lettersInGame);
     this.grid = LetterGrid(15, 15);
     this.gridOffset = Offset.zero;
     this.zoomScale = 1.0;
-    this.letterBag = shuffleTiles(frequencies, this.rng);
+    this.letterBag = shuffleTiles(scaledfrequencies, this.rng);
     this.bagIndex = 0;
     this.rackTiles = [];
     this.gameStopwatch.stop();
