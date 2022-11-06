@@ -77,6 +77,7 @@ final illegalWordHighlightModePrefsKey = "illegal_word_highlight";
 final numTilesPrefsKey = "tiles_per_game";
 final qHandlingPrefsKey = "q_tiles";
 final numBestTimesToStore = 5;
+final newTileSlideInAnimationMillis = 300;
 
 String bestTimesPrefsKey(int numTiles) => "best_times.${numTiles}";
 
@@ -589,11 +590,9 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
-  bool allTilesPlaced() {
-    return
-        this.bagIndex >= this.lettersInGame &&
-        this.rackTiles.isEmpty &&
-        this.grid.connectedLetterGroups().length == 1;
+  bool allTilesPlacedInSingleGroup() {
+    final groups = this.grid.connectedLetterGroups();
+    return (groups.length == 1 && groups[0].length == this.lettersInGame);
   }
 
   void checkForDrawTile() {
@@ -608,7 +607,7 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void checkForGameOver() async {
-    if (allTilesPlaced() && computeInvalidLetterCoords().isEmpty) {
+    if (allTilesPlacedInSingleGroup() && computeInvalidLetterCoords().isEmpty) {
       this.gameStopwatch.stop();
       await this.updateBestTimes(this.gameStopwatch.elapsedMilliseconds);
       setState(() {
@@ -708,7 +707,7 @@ class _MyHomePageState extends State<MyHomePage> {
       case IllegalWordHighlightMode.never:
         return false;
       case IllegalWordHighlightMode.all_tiles_played:
-        return allTilesPlaced();
+        return allTilesPlacedInSingleGroup();
     }
   }
 
@@ -805,7 +804,7 @@ class _MyHomePageState extends State<MyHomePage> {
     return TweenAnimationBuilder(
       tween: Tween(begin: animTile.origin, end: endOffset),
       curve: Curves.ease,
-      duration: Duration(milliseconds: 300),
+      duration: Duration(milliseconds: newTileSlideInAnimationMillis),
       onEnd: animationDone,
       child: letterTile(animTile.tile.letter, layout.rackTileSize, rules),
       builder: (BuildContext context, Offset position, Widget? child) {
