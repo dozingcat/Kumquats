@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:wordgrid/grid.dart';
-
+import 'package:kumquats/grid.dart';
 
 void main() {
   test("set letters", () {
@@ -60,7 +59,8 @@ void main() {
   test("check words", () {
     final validWords = {"ACE", "CAT", "ETA"};
     final grid = LetterGrid(10, 10);
-    expect(grid.coordinatesWithInvalidWords(validWords).length, 0);
+    final rules = GridRules(qHandling: QTileHandling.qOnly);
+    expect(grid.coordinatesWithInvalidWords(validWords, rules).length, 0);
 
     grid.setAtXY(2, 5, "A");
     grid.setAtXY(3, 5, "C");
@@ -71,11 +71,49 @@ void main() {
     grid.setAtXY(2, 7, "E");
     grid.setAtXY(3, 7, "T");
     grid.setAtXY(4, 7, "A");
-    expect(grid.coordinatesWithInvalidWords(validWords).length, 0);
+    expect(grid.coordinatesWithInvalidWords(validWords, rules).length, 0);
 
     grid.setAtXY(3, 7, "X");
     expect(
-        grid.coordinatesWithInvalidWords(validWords),
+        grid.coordinatesWithInvalidWords(validWords, rules),
         {Coord(3, 5), Coord(3, 6), Coord(3, 7), Coord(2, 7), Coord(4, 7)});
   });
+
+  try {
+    try {
+      test("check words with Q/QU", () {
+        final validWords = {"QUART", "QAT","EQUIVOQUE"};
+        final grid = LetterGrid(10, 10);
+        final qOnlyRules = GridRules(qHandling: QTileHandling.qOnly);
+        final qOrQuRules = GridRules(qHandling: QTileHandling.qOrQu);
+
+        // EQUIVOQUE without U letters.
+        grid.setAtXY(1, 4, "E");
+        grid.setAtXY(2, 4, "Q");
+        grid.setAtXY(3, 4, "I");
+        grid.setAtXY(4, 4, "V");
+        grid.setAtXY(5, 4, "O");
+        grid.setAtXY(6, 4, "Q");
+        grid.setAtXY(7, 4, "E");
+        // QUART without Q.
+        grid.setAtXY(2, 5, "A");
+        grid.setAtXY(2, 6, "R");
+        grid.setAtXY(2, 7, "T");
+        // QAT
+        grid.setAtXY(6, 5, "A");
+        grid.setAtXY(6, 6, "T");
+
+        expect(
+            grid.coordinatesWithInvalidWords(validWords, qOnlyRules), {
+              Coord(1, 4), Coord(2, 4), Coord(3, 4), Coord(4, 4), Coord(5, 4),
+              Coord(6, 4), Coord(7, 4), Coord(2, 5), Coord(2, 6), Coord(2, 7),
+            });
+        expect(grid.coordinatesWithInvalidWords(validWords, qOrQuRules).length, 0);
+      });
+    } catch (e, s) {
+      print(s);
+    }
+  } catch (e, s) {
+    print(s);
+  }
 }

@@ -75,7 +75,9 @@ enum IllegalWordHighlightMode {
 
 final illegalWordHighlightModePrefsKey = "illegal_word_highlight";
 final numTilesPrefsKey = "tiles_per_game";
+final qHandlingPrefsKey = "q_tiles";
 final numBestTimesToStore = 5;
+final newTileSlideInAnimationMillis = 300;
 
 String bestTimesPrefsKey(int numTiles) => "best_times.${numTiles}";
 
@@ -223,6 +225,7 @@ class _MyHomePageState extends State<MyHomePage> {
   var illegalWordHighlightMode = IllegalWordHighlightMode.always;
 
   LetterGrid grid = LetterGrid(1, 1);
+  GridRules rules = GridRules(qHandling: QTileHandling.qOrQu);
   List<RackTile> rackTiles = [];
   List<AnimatedRackTile> animatedRackTiles = [];
   List<AnimatedGridTile> animatedGridTiles = [];
@@ -265,6 +268,9 @@ class _MyHomePageState extends State<MyHomePage> {
     final highlightStr = this.preferences.getString(illegalWordHighlightModePrefsKey) ?? '';
     this.illegalWordHighlightMode = IllegalWordHighlightMode.values.firstWhere(
             (s) => s.toString() == highlightStr, orElse: () => IllegalWordHighlightMode.always);
+    final qStr = this.preferences.getString(qHandlingPrefsKey) ?? '';
+    this.rules.qHandling = QTileHandling.values.firstWhere(
+            (s) => s.toString() == qStr, orElse: () => QTileHandling.qOrQu);
     this.startGame(letterFrequencies);
   }
 
@@ -365,7 +371,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
     final maxGridWidth = layout.numXCells * layout.pixelsPerGridCell() + layout.gridLineWidth;
     final maxGridHeight = layout.numYCells * layout.pixelsPerGridCell() + layout.gridLineWidth;
-    final statusHeight = 0.06 * displaySize.longestSide;
+    final statusHeight = (0.1 * displaySize.shortestSide).clamp(40, 80);
     if (displaySize.height >= displaySize.width) {
       layout.availableGridSize = Size(displaySize.width, displaySize.height * 0.67);
       layout.gridRect = Rect.fromLTRB(
@@ -474,6 +480,10 @@ class _MyHomePageState extends State<MyHomePage> {
     handleDragEnd(event);
   }
 
+  Set<Coord> computeInvalidLetterCoords() {
+    return this.grid.coordinatesWithInvalidWords(this.dictionary, rules);
+  }
+
   void handleDragEnd(DragEndDetails event) {
     final displaySize = MediaQuery.of(context).size;
     final layout = layoutForDisplaySize(displaySize);
@@ -535,7 +545,7 @@ class _MyHomePageState extends State<MyHomePage> {
     }
     setState(() {
       this.dragTile = null;
-      this.invalidLetterCoords = this.grid.coordinatesWithInvalidWords(this.dictionary);
+      this.invalidLetterCoords = computeInvalidLetterCoords();
     });
   }
 
@@ -580,11 +590,9 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
-  bool allTilesPlaced() {
-    return
-        this.bagIndex >= this.lettersInGame &&
-        this.rackTiles.isEmpty &&
-        this.grid.connectedLetterGroups().length == 1;
+  bool allTilesPlacedInSingleGroup() {
+    final groups = this.grid.connectedLetterGroups();
+    return (groups.length == 1 && groups[0].length == this.lettersInGame);
   }
 
   void checkForDrawTile() {
@@ -592,14 +600,14 @@ class _MyHomePageState extends State<MyHomePage> {
         this.rackTiles.isEmpty &&
         this.bagIndex < this.lettersInGame &&
         this.grid.connectedLetterGroups().length == 1 &&
-        this.grid.coordinatesWithInvalidWords(this.dictionary).isEmpty) {
+        this.computeInvalidLetterCoords().isEmpty) {
       drawTileFromBag();
       this.scheduleDrawTile(inGameNewTileDelay);
     }
   }
 
   void checkForGameOver() async {
-    if (allTilesPlaced() && this.grid.coordinatesWithInvalidWords(this.dictionary).isEmpty) {
+    if (allTilesPlacedInSingleGroup() && computeInvalidLetterCoords().isEmpty) {
       this.gameStopwatch.stop();
       await this.updateBestTimes(this.gameStopwatch.elapsedMilliseconds);
       setState(() {
@@ -653,8 +661,12 @@ class _MyHomePageState extends State<MyHomePage> {
     return newBestTimes;
   }
 
-  Widget letterTile(String letter, double cellSize, {invalid = false}) {
+  Widget letterTile(String letter, double cellSize, GridRules rules, {invalid = false}) {
     final background = invalid ? invalidTileBackgroundColor : tileBackgroundColor;
+    final tileContent = (letter == "Q" && rules.qHandling == QTileHandling.qOrQu) ?
+        Text("Q/QU", textAlign: TextAlign.center, style: TextStyle(color: tileTextColor, fontSize: cellSize * 0.4))
+        :
+        Text(letter, textAlign: TextAlign.center, style: TextStyle(color: tileTextColor, fontSize: cellSize * 0.8));
     return Container(width: cellSize, height: cellSize,
         decoration: BoxDecoration(
             color: background,
@@ -664,7 +676,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 width: cellSize * 0.02,
             ),
         ),
-        child: Text(letter, textAlign: TextAlign.center, style: TextStyle(color: tileTextColor, fontSize: cellSize * 0.8)));
+        child: tileContent);
   }
 
   List<Widget> gridLines(final Layout layout) {
@@ -695,7 +707,7 @@ class _MyHomePageState extends State<MyHomePage> {
       case IllegalWordHighlightMode.never:
         return false;
       case IllegalWordHighlightMode.all_tiles_played:
-        return allTilesPlaced();
+        return allTilesPlacedInSingleGroup();
     }
   }
 
@@ -715,7 +727,7 @@ class _MyHomePageState extends State<MyHomePage> {
               onPanStart: (event) => gridTileDragStart(event, x, y),
               onPanUpdate: gridTileDragUpdate,
               onPanEnd: gridTileDragEnd,
-              child: letterTile(grid.atXY(x, y), layout.gridTileSize, invalid: invalid)))));
+              child: letterTile(grid.atXY(x, y), layout.gridTileSize, rules, invalid: invalid)))));
         }
       }
     }
@@ -761,7 +773,7 @@ class _MyHomePageState extends State<MyHomePage> {
           onPanStart: (event) => rackTileDragStart(event, rt),
           onPanUpdate: rackTileDragUpdate,
           onPanEnd: rackTileDragEnd,
-          child: letterTile(rt.letter, layout.rackTileSize)
+          child: letterTile(rt.letter, layout.rackTileSize, rules)
         )
     ));
   }
@@ -792,9 +804,9 @@ class _MyHomePageState extends State<MyHomePage> {
     return TweenAnimationBuilder(
       tween: Tween(begin: animTile.origin, end: endOffset),
       curve: Curves.ease,
-      duration: Duration(milliseconds: 300),
+      duration: Duration(milliseconds: newTileSlideInAnimationMillis),
       onEnd: animationDone,
-      child: letterTile(animTile.tile.letter, layout.rackTileSize),
+      child: letterTile(animTile.tile.letter, layout.rackTileSize, rules),
       builder: (BuildContext context, Offset position, Widget? child) {
         return Positioned(
           left: position.dx,
@@ -817,7 +829,7 @@ class _MyHomePageState extends State<MyHomePage> {
       curve: Curves.ease,
       duration: Duration(milliseconds: 300),
       onEnd: animationDone,
-      child: letterTile(grid.atXY(dest.x, dest.y), layout.gridTileSize),
+      child: letterTile(grid.atXY(dest.x, dest.y), layout.gridTileSize, rules),
       builder: (BuildContext context, Offset position, Widget? child) {
         return Positioned(
           left: position.dx,
@@ -841,6 +853,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Widget statusArea(final Layout layout) {
     final fontSize = layout.statusRect.height / 2;
+    final buttonScale = max(1.0, layout.statusRect.height / 60);
     return Positioned(
         left: layout.statusRect.left,
         top: layout.statusRect.top,
@@ -849,13 +862,13 @@ class _MyHomePageState extends State<MyHomePage> {
         child: Container(
           color: statusBackgroundColor,
           child: Row(children: [
-            Container(width: layout.statusRect.width / 20),
+            Container(width: layout.statusRect.width * 0.05),
             Text("${this.grid.numberOfFilledCells()} / ${this.lettersInGame}", style: TextStyle(fontSize: fontSize)),
             Expanded(child: Container()),
             Text(formattedElapsedTime(), style: TextStyle(fontSize: fontSize)),
             Expanded(child: Container()),
-            ElevatedButton(onPressed: _showMenu, child: Text("Menu")),
-            Container(width: layout.statusRect.width / 20),
+            Transform.scale(scale: buttonScale, child: ElevatedButton(onPressed: _showMenu, child: Text("Menu"))),
+            Container(width: layout.statusRect.width * 0.05),
           ]),
         )
       );
@@ -866,7 +879,7 @@ class _MyHomePageState extends State<MyHomePage> {
     return Positioned(
         left: this.dragTile!.currentPosition.dx - tileSize / 2,
         top: this.dragTile!.currentPosition.dy - tileSize / 2,
-        child: letterTile(this.dragTile!.letter, tileSize));
+        child: letterTile(this.dragTile!.letter, tileSize, rules));
   }
 
   Widget _paddingAll(final double paddingPx, final Widget child) {
@@ -888,8 +901,8 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Widget _mainMenuDialog(final BuildContext context, final Size displaySize) {
     final minDim = displaySize.shortestSide;
-
-    return Container(
+    final scale = (minDim / 450).clamp(1.0, 1.5);
+    return Transform.scale(scale: scale, child: Container(
       width: double.infinity,
       height: double.infinity,
       child: Center(
@@ -901,7 +914,7 @@ class _MyHomePageState extends State<MyHomePage> {
               _paddingAll(5, Text(
                   'Kumquats!',
                   style: TextStyle(
-                    fontSize: minDim / 18,
+                    fontSize: 24,
                   )
               )),
               Table(
@@ -919,13 +932,13 @@ class _MyHomePageState extends State<MyHomePage> {
           ),
         ),
       ),
-    ));
+    )));
   }
 
   Widget _gameOverDialog(final BuildContext context, final Size displaySize) {
     final minDim = displaySize.shortestSide;
-    final maxDim = displaySize.longestSide;
-    final titleFontSize = min(maxDim / 30, minDim / 15);
+    final scale = (minDim / 450).clamp(1.0, 1.5);
+
     final bestTimes = readBestTimesFromPrefs(bestTimesPrefsKey(this.lettersInGame));
     final padding = (minDim * 0.05).clamp(5.0, 10.0);
 
@@ -935,8 +948,8 @@ class _MyHomePageState extends State<MyHomePage> {
       final gameDateStr = DateFormat.yMMMd().format(gameTime);
       final isFromLastGame = this.gameStopwatch.elapsedMilliseconds == record.elapsedMillis;
       final textStyle = TextStyle(
-        fontSize: titleFontSize * 0.75,
-        fontWeight: isFromLastGame ? FontWeight.bold : FontWeight.normal,
+        fontSize: 18,
+        color: isFromLastGame ? Colors.blue[700] : Colors.black,
       );
       return TableRow(children: [
         _paddingAll(5, Text(elapsedTimeStr, style: textStyle)),
@@ -945,7 +958,7 @@ class _MyHomePageState extends State<MyHomePage> {
       ]);
     };
 
-    return Container(
+    return Transform.scale(scale: scale, child: Container(
       width: double.infinity,
       height: double.infinity,
       child: Center(
@@ -954,10 +967,10 @@ class _MyHomePageState extends State<MyHomePage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              _paddingAll(padding, Text(
+              _paddingAll(15, Text(
                   'Finished in ${formattedElapsedTime()}!',
                   style: TextStyle(
-                    fontSize: titleFontSize,
+                    fontSize: 24,
                   )
               )),
 
@@ -965,7 +978,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 _paddingAll(10, Text(
                     "Best Times (${this.lettersInGame} tiles)",
                     style: TextStyle(
-                      fontSize: titleFontSize * 0.85,
+                      fontSize: 20,
                     )
                 )),
                 Table(
@@ -988,24 +1001,24 @@ class _MyHomePageState extends State<MyHomePage> {
           ),
         ),
       ),
-    );
+    ));
   }
 
   Widget _preferencesDialog(final BuildContext context, final Size displaySize) {
-    final minDim = displaySize.shortestSide;
-    final maxDim = displaySize.longestSide;
-    final titleFontSize = min(maxDim / 32.0, minDim / 18.0);
-    final baseFontSize = min(maxDim / 36.0, minDim / 20.0);
+    final scale = (displaySize.shortestSide / 450).clamp(1.0, 1.5);
+
+    final titleFontSize = 24.0;
+    final baseFontSize = 16.0;
     final numTilesInGame = readNumTilesPerGameFromPrefs();
 
     final makeGameLengthRow = () {
       final menuItemStyle = TextStyle(
-          fontSize: baseFontSize * 0.9,
+          fontSize: baseFontSize,
           fontWeight: FontWeight.normal,
-          color: Colors.blue,
+          color: Colors.blue[700],
       );
       return _paddingAll(0, Row(children:[
-        Text('Game length:', style: TextStyle(fontSize: baseFontSize)),
+        Text('Game length:', style: TextStyle(fontSize: 16)),
         Container(width: baseFontSize * 0.75),
         DropdownButton(
           value: numTilesInGame,
@@ -1039,14 +1052,33 @@ class _MyHomePageState extends State<MyHomePage> {
       ]);
     };
 
-    return Container(
+    final makeQRow = () {
+      return TableRow(children: [CheckboxListTile(
+        dense: true,
+        title: Text("Q can be used as QU", style: TextStyle(fontSize: baseFontSize)),
+        isThreeLine: false,
+        onChanged: (bool? checked) async {
+          final q = checked == true ? QTileHandling.qOrQu : QTileHandling.qOnly;
+          setState(() {
+            rules.qHandling = q;
+            if (gameMode == GameMode.in_progress) {
+              invalidLetterCoords = computeInvalidLetterCoords();
+            }
+          });
+          SharedPreferences prefs = await SharedPreferences.getInstance();
+          prefs.setString(qHandlingPrefsKey, q.toString());
+        },
+        value: rules.qHandling == QTileHandling.qOrQu,
+      )]);
+    };
+
+    return Transform.scale(scale: scale, child: Container(
         width: double.infinity,
         height: double.infinity,
         child: Center(
           child: Dialog(
             backgroundColor: dialogBackgroundColor,
-            // insetPadding: EdgeInsets.all(0),
-            child: Padding(padding: EdgeInsets.all(minDim * 0.03),
+            child: Padding(padding: EdgeInsets.all(20),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -1059,16 +1091,18 @@ class _MyHomePageState extends State<MyHomePage> {
                         defaultVerticalAlignment: TableCellVerticalAlignment.middle,
                         defaultColumnWidth: const IntrinsicColumnWidth(),
                         children: [
-                          TableRow(children: [Text("")]),
+                          TableRow(children: [SizedBox(height: 10)]),
                           TableRow(children: [makeGameLengthRow()]),
-                          TableRow(children: [Text("")]),
+                          TableRow(children: [SizedBox(height: 10)]),
                           TableRow(children: [Text('Highlight invalid words:', style: TextStyle(fontSize: baseFontSize))]),
                           makeIllegalHighlightOptionRow("Always", IllegalWordHighlightMode.always),
                           makeIllegalHighlightOptionRow('When all tiles are placed', IllegalWordHighlightMode.all_tiles_played),
                           makeIllegalHighlightOptionRow('Never', IllegalWordHighlightMode.never),
-                          TableRow(children: [Text("")]),
+                          TableRow(children: [SizedBox(height: 5)]),
+                          makeQRow(),
                         ],
                       ),
+                      SizedBox(height: 20),
                       ElevatedButton(
                         style: raisedButtonStyle,
                         onPressed: _closePreferences,
@@ -1080,7 +1114,7 @@ class _MyHomePageState extends State<MyHomePage> {
               ),
             ),
           ),
-        ));
+        )));
   }
 
   void _showMenu() {
@@ -1126,13 +1160,13 @@ class _MyHomePageState extends State<MyHomePage> {
     showAboutDialog(
       context: context,
       applicationName: 'Kumquats',
-      applicationVersion: '1.0.0',
-      applicationLegalese: '© 2021 Brian Nenninger',
+      applicationVersion: '1.1.0',
+      applicationLegalese: '© 2021-2022 Brian Nenninger',
       children: [
         Container(height: 15),
         MarkdownBody(
           data: aboutText,
-          onTapLink: (text, href, title) => launch(href!),
+          onTapLink: (text, href, title) => launchUrl(Uri.parse(href!)),
           // https://github.com/flutter/flutter_markdown/issues/311
           listItemCrossAxisAlignment: MarkdownListItemCrossAxisAlignment.start,
         ),

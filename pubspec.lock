@@ -82,7 +82,11 @@ packages:
       name: flutter_markdown
       url: "https://pub.dartlang.org"
     source: hosted
+<<<<<<< HEAD
     version: "0.6.13"
+=======
+    version: "0.6.12"
+>>>>>>> b8d47990f9ba71fd263819d54bbf42a74be75262
   flutter_test:
     dependency: "direct dev"
     description: flutter
@@ -197,7 +201,11 @@ packages:
       name: shared_preferences_android
       url: "https://pub.dartlang.org"
     source: hosted
+<<<<<<< HEAD
     version: "2.0.14"
+=======
+    version: "2.0.13"
+>>>>>>> b8d47990f9ba71fd263819d54bbf42a74be75262
   shared_preferences_ios:
     dependency: transitive
     description:
@@ -293,14 +301,22 @@ packages:
       name: url_launcher
       url: "https://pub.dartlang.org"
     source: hosted
+<<<<<<< HEAD
     version: "6.1.7"
+=======
+    version: "6.1.6"
+>>>>>>> b8d47990f9ba71fd263819d54bbf42a74be75262
   url_launcher_android:
     dependency: transitive
     description:
       name: url_launcher_android
       url: "https://pub.dartlang.org"
     source: hosted
+<<<<<<< HEAD
     version: "6.0.22"
+=======
+    version: "6.0.19"
+>>>>>>> b8d47990f9ba71fd263819d54bbf42a74be75262
   url_launcher_ios:
     dependency: transitive
     description:
@@ -356,7 +372,11 @@ packages:
       name: win32
       url: "https://pub.dartlang.org"
     source: hosted
+<<<<<<< HEAD
     version: "3.1.2"
+=======
+    version: "3.0.0"
+>>>>>>> b8d47990f9ba71fd263819d54bbf42a74be75262
   xdg_directories:
     dependency: transitive
     description:

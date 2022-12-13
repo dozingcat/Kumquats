@@ -2,6 +2,14 @@ enum Direction {Horizontal, Vertical}
 
 enum GridEdge {Top, Left, Right, Bottom}
 
+enum QTileHandling {qOnly, qOrQu}
+
+class GridRules {
+  QTileHandling qHandling;
+
+  GridRules({required this.qHandling});
+}
+
 class Coord {
   final int x;
   final int y;
@@ -13,6 +21,8 @@ class Coord {
   bool operator ==(o) => o is Coord && x == o.x && y == o.y;
 
   int get hashCode => x.hashCode ^ y.hashCode;
+
+  @override String toString() => "Coord($x, $y)";
 }
 
 class GridWord {
@@ -188,10 +198,41 @@ class LetterGrid {
     return groups;
   }
 
-  Set<Coord> coordinatesWithInvalidWords(Set<String> validWords) {
+  bool isLegalWord(String word, Set<String> dictionary, GridRules rules) {
+    if (dictionary.contains(word)) {
+      return true;
+    }
+    if (rules.qHandling != QTileHandling.qOrQu) {
+      return false;
+    }
+    // Assuming there's a maximum of 2 occurrences of Q.
+    int qStart = word.indexOf("Q");
+    if (qStart == -1) {
+      return false;
+    }
+    String firstQu = word.substring(0, qStart) + "QU" + word.substring(qStart + 1);
+    if (dictionary.contains(firstQu)) {
+      return true;
+    }
+    int qEnd = word.lastIndexOf("Q");
+    if (qEnd > qStart) {
+      String secondQuNotFirst = word.substring(0, qEnd) + "QU" + word.substring(qEnd + 1);
+      if (dictionary.contains(secondQuNotFirst)) {
+        return true;
+      }
+      String secondAndFirstQu =
+          word.substring(0, qStart) + "QU" + word.substring(qStart + 1, qEnd) + "QU" + word.substring(qEnd + 1);
+      if (dictionary.contains(secondAndFirstQu)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  Set<Coord> coordinatesWithInvalidWords(Set<String> validWords, GridRules rules) {
     Set<Coord> result = {};
     findWords().forEach((gw) {
-      if (!validWords.contains(gw.word)) {
+      if (!isLegalWord(gw.word, validWords, rules)) {
         switch (gw.direction) {
           case Direction.Horizontal:
             for (var i = 0; i < gw.word.length; i++) {
