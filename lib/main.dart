@@ -73,6 +73,12 @@ enum IllegalWordHighlightMode {
   always,
 }
 
+enum TileLegality {
+  legal,
+  invalid_word,
+  disconnected_group,
+}
+
 final illegalWordHighlightModePrefsKey = "illegal_word_highlight";
 final numTilesPrefsKey = "tiles_per_game";
 final qHandlingPrefsKey = "q_tiles";
@@ -202,8 +208,12 @@ List<String> shuffleTiles(Map<int, List<String>> frequencies, Random rng) {
   return chars;
 }
 
-final tileBackgroundColor = Color.fromARGB(255, 240, 200, 100);
-final invalidTileBackgroundColor = Color.fromARGB(255, 240, 60, 30);
+final tileBackgroundColors = {
+  TileLegality.legal: Color.fromARGB(255, 240, 200, 100),
+  TileLegality.invalid_word: Color.fromARGB(255, 240, 60, 30),
+  TileLegality.disconnected_group: Color.fromARGB(255, 240, 128, 128),
+};
+
 final tileTextColor = Color.fromARGB(255, 48, 48, 48);
 final tileBorderColor = Color.fromARGB(255, 200, 160, 60);
 final boardBackgroundColor = Color.fromARGB(255, 240, 240, 240);
@@ -661,8 +671,8 @@ class _MyHomePageState extends State<MyHomePage> {
     return newBestTimes;
   }
 
-  Widget letterTile(String letter, double cellSize, GridRules rules, {invalid = false}) {
-    final background = invalid ? invalidTileBackgroundColor : tileBackgroundColor;
+  Widget letterTile(String letter, double cellSize, GridRules rules, {legality = TileLegality.legal}) {
+    final background = tileBackgroundColors[legality];
     final tileContent = (letter == "Q" && rules.qHandling == QTileHandling.qOrQu) ?
         Text("Q/QU", textAlign: TextAlign.center, style: TextStyle(color: tileTextColor, fontSize: cellSize * 0.4))
         :
@@ -714,6 +724,7 @@ class _MyHomePageState extends State<MyHomePage> {
   List<Widget> gridTiles(final Layout layout) {
     final List<Widget> tiles = [];
     final showIllegal = shouldHighlightIllegalWords();
+    final groups = grid.connectedLetterGroups();
     for (var y = 0; y < grid.numYCells(); y++) {
       for (var x = 0; x < grid.numXCells(); x++) {
         if (!grid.isEmptyAtXY(x, y)) {
@@ -722,12 +733,17 @@ class _MyHomePageState extends State<MyHomePage> {
                   !this.animatedGridTiles.every((a) => !Coord.isAtXY(a.destination, x, y));
           double opacity = isTranslucent ? 0.2 : 1.0;
           final pos = layout.offsetForGridXY(x, y);
-          final invalid = showIllegal && this.invalidLetterCoords.contains(Coord(x, y));
+          final coord = Coord(x, y);
+          final legality =
+              showIllegal && this.invalidLetterCoords.contains(coord)
+                  ? TileLegality.invalid_word :
+                    showIllegal && !groups[0].contains(coord)
+                        ? TileLegality.disconnected_group : TileLegality.legal;
           tiles.add(Transform.translate(offset: pos, child: Opacity(opacity: opacity, child: GestureDetector(
               onPanStart: (event) => gridTileDragStart(event, x, y),
               onPanUpdate: gridTileDragUpdate,
               onPanEnd: gridTileDragEnd,
-              child: letterTile(grid.atXY(x, y), layout.gridTileSize, rules, invalid: invalid)))));
+              child: letterTile(grid.atXY(x, y), layout.gridTileSize, rules, legality: legality)))));
         }
       }
     }
