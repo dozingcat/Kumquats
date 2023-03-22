@@ -79,41 +79,96 @@ void main() {
         {Coord(3, 5), Coord(3, 6), Coord(3, 7), Coord(2, 7), Coord(4, 7)});
   });
 
-  try {
-    try {
-      test("check words with Q/QU", () {
-        final validWords = {"QUART", "QAT","EQUIVOQUE"};
-        final grid = LetterGrid(10, 10);
-        final qOnlyRules = GridRules(qHandling: QTileHandling.qOnly);
-        final qOrQuRules = GridRules(qHandling: QTileHandling.qOrQu);
+  test("check words with Q/QU", () {
+    final validWords = {"QUART", "QAT","EQUIVOQUE"};
+    final grid = LetterGrid(10, 10);
+    final qOnlyRules = GridRules(qHandling: QTileHandling.qOnly);
+    final qOrQuRules = GridRules(qHandling: QTileHandling.qOrQu);
 
-        // EQUIVOQUE without U letters.
-        grid.setAtXY(1, 4, "E");
-        grid.setAtXY(2, 4, "Q");
-        grid.setAtXY(3, 4, "I");
-        grid.setAtXY(4, 4, "V");
-        grid.setAtXY(5, 4, "O");
-        grid.setAtXY(6, 4, "Q");
-        grid.setAtXY(7, 4, "E");
-        // QUART without Q.
-        grid.setAtXY(2, 5, "A");
-        grid.setAtXY(2, 6, "R");
-        grid.setAtXY(2, 7, "T");
-        // QAT
-        grid.setAtXY(6, 5, "A");
-        grid.setAtXY(6, 6, "T");
+    // EQUIVOQUE without U letters.
+    grid.setAtXY(1, 4, "E");
+    grid.setAtXY(2, 4, "Q");
+    grid.setAtXY(3, 4, "I");
+    grid.setAtXY(4, 4, "V");
+    grid.setAtXY(5, 4, "O");
+    grid.setAtXY(6, 4, "Q");
+    grid.setAtXY(7, 4, "E");
+    // QUART without Q.
+    grid.setAtXY(2, 5, "A");
+    grid.setAtXY(2, 6, "R");
+    grid.setAtXY(2, 7, "T");
+    // QAT
+    grid.setAtXY(6, 5, "A");
+    grid.setAtXY(6, 6, "T");
 
-        expect(
-            grid.coordinatesWithInvalidWords(validWords, qOnlyRules), {
-              Coord(1, 4), Coord(2, 4), Coord(3, 4), Coord(4, 4), Coord(5, 4),
-              Coord(6, 4), Coord(7, 4), Coord(2, 5), Coord(2, 6), Coord(2, 7),
-            });
-        expect(grid.coordinatesWithInvalidWords(validWords, qOrQuRules).length, 0);
-      });
-    } catch (e, s) {
-      print(s);
-    }
-  } catch (e, s) {
-    print(s);
-  }
+    expect(
+        grid.coordinatesWithInvalidWords(validWords, qOnlyRules), {
+          Coord(1, 4), Coord(2, 4), Coord(3, 4), Coord(4, 4), Coord(5, 4),
+          Coord(6, 4), Coord(7, 4), Coord(2, 5), Coord(2, 6), Coord(2, 7),
+        });
+    expect(grid.coordinatesWithInvalidWords(validWords, qOrQuRules).length, 0);
+  });
+
+  group("expand grid", () {
+    test("no expansion", () {
+      final grid = LetterGrid(10, 10);
+      grid.setAtXY(5, 5, "X");
+      final shift = grid.expandIfNeededForPadding(3, 4, minPadding: 2);
+
+      expect(shift, Coord(0, 0));
+      expect(grid.numXCells(), 10);
+      expect(grid.numYCells(), 10);
+      expect(grid.atXY(5, 5), "X");
+      expect(grid.numberOfFilledCells(), 1);
+    });
+
+    test("insert left", () {
+      final grid = LetterGrid(10, 10);
+      grid.setAtXY(5, 5, "X");
+      final shift = grid.expandIfNeededForPadding(1, 4, minPadding: 2);
+
+      expect(shift, Coord(1, 0));
+      expect(grid.numXCells(), 11);
+      expect(grid.numYCells(), 10);
+      expect(grid.atXY(6, 5), "X");
+      expect(grid.numberOfFilledCells(), 1);
+    });
+
+    test("insert above", () {
+      final grid = LetterGrid(10, 10);
+      grid.setAtXY(5, 5, "X");
+      final shift = grid.expandIfNeededForPadding(3, 0, minPadding: 2);
+
+      expect(shift, Coord(0, 2));
+      expect(grid.numXCells(), 10);
+      expect(grid.numYCells(), 12);
+      expect(grid.atXY(5, 7), "X");
+      expect(grid.numberOfFilledCells(), 1);
+    });
+
+    test("insert left and above", () {
+      final grid = LetterGrid(10, 10);
+      grid.setAtXY(5, 5, "X");
+      final shift = grid.expandIfNeededForPadding(0, 1, minPadding: 2);
+
+      expect(shift, Coord(2, 1));
+      expect(grid.numXCells(), 12);
+      expect(grid.numYCells(), 11);
+      expect(grid.atXY(7, 6), "X");
+      expect(grid.numberOfFilledCells(), 1);
+    });
+
+    test("insert right and below", () {
+      final grid = LetterGrid(10, 10);
+      grid.setAtXY(5, 5, "X");
+      final shift = grid.expandIfNeededForPadding(9, 9, minPadding: 2);
+
+      // Grid size changes but existing cell coordinates aren't affected.
+      expect(shift, Coord(0, 0));
+      expect(grid.numXCells(), 12);
+      expect(grid.numYCells(), 12);
+      expect(grid.atXY(5, 5), "X");
+      expect(grid.numberOfFilledCells(), 1);
+    });
+  });
 }

@@ -14,7 +14,7 @@ import 'grid.dart';
 
 void main() {
   runApp(MyApp());
-  SystemChrome.setEnabledSystemUIOverlays([]);
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersive);
 }
 
 class MyApp extends StatelessWidget {
@@ -149,13 +149,13 @@ class RackTile {
 
 class AnimatedRackTile {
   RackTile tile;
-  Offset origin;
+  Rect origin;
 
   AnimatedRackTile(this.tile, this.origin);
 }
 
 class AnimatedGridTile {
-  Offset origin;
+  Rect origin;
   Coord destination;
 
   AnimatedGridTile(this.destination, this.origin);
@@ -494,6 +494,20 @@ class _MyHomePageState extends State<MyHomePage> {
     return this.grid.coordinatesWithInvalidWords(this.dictionary, rules);
   }
 
+  Coord? _gridCoordForDragTileCurrentPosition(final Layout layout) {
+    final dt = dragTile;
+    if (dt == null || !layout.gridRect.contains(dt.currentPosition)) {
+      return null;
+    }
+    int dropGridX = (dt.currentPosition.dx + layout.gridDisplayOffset.dx - layout.gridRect.left) ~/ layout.pixelsPerGridCell();
+    int dropGridY = (dt.currentPosition.dy + layout.gridDisplayOffset.dy - layout.gridRect.top) ~/ layout.pixelsPerGridCell();
+    if (dropGridX >= 0 && dropGridX < layout.numXCells &&
+        dropGridY >= 0 && dropGridY < layout.numYCells) {
+      return Coord(dropGridX, dropGridY);
+    }
+    return null;
+  }
+
   void handleDragEnd(DragEndDetails event) {
     final displaySize = MediaQuery.of(context).size;
     final layout = layoutForDisplaySize(displaySize);
@@ -515,28 +529,34 @@ class _MyHomePageState extends State<MyHomePage> {
       }
       else {
         // Dragging from grid, clear grid cell and create new rack tile.
+        // TODO: animate
         setState(() {
           this.grid.setAtXY(dt.gridCoord!.x, dt.gridCoord!.y, "");
           this.rackTiles.add(RackTile(dt.letter, longAxisFraction, shortAxisFraction));
         });
       }
     }
-    else if (layout.gridRect.contains(dropPosition)) {
-      // Determine cell of dropPosition.
-      int dropGridX = (dropPosition.dx + layout.gridDisplayOffset.dx - layout.gridRect.left) ~/ layout.pixelsPerGridCell();
-      int dropGridY = (dropPosition.dy + layout.gridDisplayOffset.dy - layout.gridRect.top) ~/ layout.pixelsPerGridCell();
-      if (dropGridX >= 0 && dropGridX < layout.numXCells &&
-          dropGridY >= 0 && dropGridY < layout.numYCells &&
-          this.grid.isEmptyAtXY(dropGridX, dropGridY)) {
+    else {
+      final dropCoord = _gridCoordForDragTileCurrentPosition(layout);
+      if (dropCoord != null && this.grid.isEmptyAtXY(dropCoord.x, dropCoord.y)) {
         setState(() {
-          this.grid.setAtXY(dropGridX, dropGridY, dt.letter);
+          this.grid.setAtXY(dropCoord.x, dropCoord.y, dt.letter);
+          if (dt.gridCoord != null) {
+            this.grid.setAtXY(dt.gridCoord!.x, dt.gridCoord!.y, "");
+          }
+          // If we expand the grid to the left or top, we need to adjust the
+          // destination cell of the animation.
+          final shift = grid.expandIfNeededForPadding(dropCoord.x, dropCoord.y);
+          final updatedDropCoord = Coord(dropCoord.x + shift.x, dropCoord.y + shift.y);
           if (dt.rackTile != null) {
+            Rect srcRect = Rect.fromCircle(center: dt.currentPosition, radius: layout.rackTileSize / 2);
+            this.animatedGridTiles.add(AnimatedGridTile(updatedDropCoord, srcRect));
             this.rackTiles.remove(dt.rackTile);
           }
           else {
-            this.grid.setAtXY(dt.gridCoord!.x, dt.gridCoord!.y, "");
+            Rect srcRect = Rect.fromCircle(center: dropPosition, radius: layout.gridTileSize / 2);
+            this.animatedGridTiles.add(AnimatedGridTile(updatedDropCoord, srcRect));
           }
-          this.expandGridIfNeeded(dropGridX, dropGridY);
           this.checkForGameOver();
           this.checkForDrawTile();
         });
@@ -544,12 +564,12 @@ class _MyHomePageState extends State<MyHomePage> {
       else {
         // Animate back to original position.
         if (dt.rackTile != null) {
-          Offset animOffset = Offset(layout.rackTileSize / 2, layout.rackTileSize / 2);
-          this.animatedRackTiles.add(AnimatedRackTile(dt.rackTile!, dropPosition - animOffset));
+          Rect srcRect = Rect.fromCircle(center: dropPosition, radius: layout.rackTileSize / 2);
+          this.animatedRackTiles.add(AnimatedRackTile(dt.rackTile!, srcRect));
         }
         else {
-          Offset animOffset = Offset(layout.gridTileSize / 2, layout.gridTileSize / 2);
-          this.animatedGridTiles.add(AnimatedGridTile(dt.gridCoord!, dropPosition - animOffset));
+          Rect srcRect = Rect.fromCircle(center: dropPosition, radius: layout.gridTileSize / 2);
+          this.animatedGridTiles.add(AnimatedGridTile(dt.gridCoord!, srcRect));
         }
       }
     }
@@ -581,23 +601,8 @@ class _MyHomePageState extends State<MyHomePage> {
     final y = 0.15 + 0.7 * this.rng.nextDouble();
     RackTile rt = RackTile(this.letterBag[this.bagIndex], x, y);
     this.bagIndex += 1;
-    this.animatedRackTiles.add(AnimatedRackTile(rt, startPos));
-  }
-
-  void expandGridIfNeeded(int gridX, int gridY) {
-    final minPadding = 2;
-    if (gridX < minPadding) {
-      this.grid.extendEdge(GridEdge.Left, minPadding - gridX);
-    }
-    if (gridX >= this.grid.numXCells() - minPadding) {
-      this.grid.extendEdge(GridEdge.Right, gridX + minPadding + 1 - this.grid.numXCells());
-    }
-    if (gridY < minPadding) {
-      this.grid.extendEdge(GridEdge.Top, minPadding - gridY);
-    }
-    if (gridY >= this.grid.numYCells() - minPadding) {
-      this.grid.extendEdge(GridEdge.Bottom, gridY + minPadding + 1 - this.grid.numYCells());
-    }
+    Rect startRect = Rect.fromCircle(center: startPos, radius: layout.rackTileSize / 2);
+    this.animatedRackTiles.add(AnimatedRackTile(rt, startRect));
   }
 
   bool allTilesPlacedInSingleGroup() {
@@ -809,6 +814,21 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
+  Widget dragTargetHighlight(final Layout layout) {
+    final target = _gridCoordForDragTileCurrentPosition(layout);
+    if (target == null || !grid.isEmptyAtXY(target.x, target.y)) {
+      return SizedBox();
+    }
+    final gridLineOffset = Offset(layout.gridLineWidth, layout.gridLineWidth);
+    final offset = layout.offsetForGridXY(target.x, target.y) + layout.gridRect.topLeft - gridLineOffset;
+    final borderWidth = layout.gridTileSize / 16;
+    return Transform.translate(offset: offset, child: Container(
+      height: layout.gridTileSize + 2 * layout.gridLineWidth,
+      width: layout.gridTileSize + 2 * layout.gridLineWidth,
+      decoration: BoxDecoration(border: Border.all(width: borderWidth, color: Colors.blue)),
+    ));
+  }
+
   Widget animatedRackTileWidget(final AnimatedRackTile animTile, final Layout layout) {
     final animationDone = () {
       this.animatedRackTiles.remove(animTile);
@@ -817,17 +837,17 @@ class _MyHomePageState extends State<MyHomePage> {
     };
 
     final endOffset = layout.rackRect.topLeft + rackTilePosition(animTile.tile, layout);
+    final destRect = Rect.fromLTWH(endOffset.dx, endOffset.dy, layout.rackTileSize, layout.rackTileSize);
     return TweenAnimationBuilder(
-      tween: Tween(begin: animTile.origin, end: endOffset),
+      tween: RectTween(begin: animTile.origin, end: destRect),
       curve: Curves.ease,
       duration: Duration(milliseconds: newTileSlideInAnimationMillis),
       onEnd: animationDone,
-      child: letterTile(animTile.tile.letter, layout.rackTileSize, rules),
-      builder: (BuildContext context, Offset position, Widget? child) {
+      builder: (BuildContext context, Rect? rect, Widget? child) {
         return Positioned(
-          left: position.dx,
-          top: position.dy,
-          child: child!,
+          left: rect!.left,
+          top: rect!.top,
+          child: letterTile(animTile.tile.letter, rect.width, rules),
         );
       },
     );
@@ -835,22 +855,25 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Widget animatedGridTileWidget(final AnimatedGridTile animTile, final Layout layout) {
     final animationDone = () {
-      this.animatedGridTiles.remove(animTile);
+      setState(() {
+        this.animatedGridTiles.remove(animTile);
+      });
     };
 
-    final dest = animTile.destination;
-    final endOffset = layout.offsetForGridXY(dest.x, dest.y) + layout.gridRect.topLeft;
+    final destCoord = animTile.destination;
+    final endOffset = layout.offsetForGridXY(destCoord.x, destCoord.y) + layout.gridRect.topLeft;
+    final destRect = Rect.fromLTWH(endOffset.dx, endOffset.dy, layout.gridTileSize, layout.gridTileSize);
+    final letter = grid.atXY(destCoord.x, destCoord.y);
     return TweenAnimationBuilder(
-      tween: Tween(begin: animTile.origin, end: endOffset),
+      tween: RectTween(begin: animTile.origin, end: destRect),
       curve: Curves.ease,
       duration: Duration(milliseconds: 300),
       onEnd: animationDone,
-      child: letterTile(grid.atXY(dest.x, dest.y), layout.gridTileSize, rules),
-      builder: (BuildContext context, Offset position, Widget? child) {
+      builder: (BuildContext context, Rect? rect, Widget? child) {
         return Positioned(
-          left: position.dx,
-          top: position.dy,
-          child: child!,
+          left: rect!.left,
+          top: rect!.top,
+          child: letterTile(letter, rect.width, rules),
         );
       },
     );
@@ -1199,6 +1222,7 @@ class _MyHomePageState extends State<MyHomePage> {
           children: <Widget>[
             Container(),
             wordGrid(layout),
+            dragTargetHighlight(layout),
             tileArea(layout),
             statusArea(layout),
             ...this.animatedRackTiles.map((a) => animatedRackTileWidget(a, layout)),
