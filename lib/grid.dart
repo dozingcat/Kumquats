@@ -119,6 +119,31 @@ class LetterGrid {
     return words;
   }
 
+  // If (grixY, gridY) is close to an edge of the grid, expands the grid so there
+  // are at least `minPadding` empty rows and columns on all edges. The returned
+  // Coord indicates how much existing tiles were shifted. For example, if a column
+  // is added on the left side of the grid, then whatever was previously at (x, y)
+  // is now at (x+1, y), so the returned Coord is (1, 0).
+  Coord expandIfNeededForPadding(int gridX, int gridY, {int minPadding = 2}) {
+    int rightShift = 0;
+    int downShift = 0;
+    if (gridX < minPadding) {
+      rightShift = minPadding - gridX;
+      extendEdge(GridEdge.Left, rightShift);
+    }
+    if (gridX >= numXCells() - minPadding) {
+      extendEdge(GridEdge.Right, gridX + minPadding + 1 - numXCells());
+    }
+    if (gridY < minPadding) {
+      downShift = minPadding - gridY;
+      extendEdge(GridEdge.Top, downShift);
+    }
+    if (gridY >= numYCells() - minPadding) {
+      extendEdge(GridEdge.Bottom, gridY + minPadding + 1 - numYCells());
+    }
+    return Coord(rightShift, downShift);
+  }
+
   void extendEdge(GridEdge edge, int numToAdd) {
     switch (edge) {
       case GridEdge.Bottom:
