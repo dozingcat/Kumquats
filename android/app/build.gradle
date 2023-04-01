@@ -53,6 +53,8 @@ android {
             storeFile keystoreProperties['storeFile'] ? file(keystoreProperties['storeFile']) : null
             storePassword keystoreProperties['storePassword']
         }
+
+        fdroid {}
     }
 
     // fdroid config from https://nikhiljha.com/posts/flutteronfdroid/
@@ -64,7 +66,7 @@ android {
 
         fdroid {
             dimension "deploy"
-            signingConfig null
+            signingConfig signingConfigs.fdroid
         }
     }
 
