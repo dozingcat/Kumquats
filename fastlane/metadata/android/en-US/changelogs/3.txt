@@ -1,0 +1,2 @@
+- Fixed bug where game could incorrectly end with one tile left.
+- Improved UI and animations.

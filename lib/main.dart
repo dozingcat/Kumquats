@@ -12,6 +12,10 @@ import 'package:url_launcher/url_launcher.dart';
 
 import 'grid.dart';
 
+const appTitle = "Kumquats";
+const appVersion = "1.1.1";
+const appLegalese = "© 2022-2023 Brian Nenninger";
+
 void main() {
   runApp(MyApp());
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersive);
@@ -1198,9 +1202,9 @@ class _MyHomePageState extends State<MyHomePage> {
     final aboutText = await DefaultAssetBundle.of(context).loadString('assets/doc/about.md');
     showAboutDialog(
       context: context,
-      applicationName: 'Kumquats',
-      applicationVersion: '1.1.0',
-      applicationLegalese: '© 2021-2022 Brian Nenninger',
+      applicationName: appTitle,
+      applicationVersion: appVersion,
+      applicationLegalese: appLegalese,
       children: [
         Container(height: 15),
         MarkdownBody(
