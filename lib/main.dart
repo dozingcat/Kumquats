@@ -18,7 +18,9 @@ const appLegalese = "© 2022-2023 Brian Nenninger";
 
 void main() {
   runApp(MyApp());
-  SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersive);
+  // On Android, hide top status bar and use full size so the grid
+  // will draw over any cutouts.
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: []);
 }
 
 class MyApp extends StatelessWidget {
@@ -385,7 +387,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
     final maxGridWidth = layout.numXCells * layout.pixelsPerGridCell() + layout.gridLineWidth;
     final maxGridHeight = layout.numYCells * layout.pixelsPerGridCell() + layout.gridLineWidth;
-    final statusHeight = (0.1 * displaySize.shortestSide).clamp(40, 80);
+    final statusHeight = (0.1 * displaySize.shortestSide).clamp(60, 120);
     if (displaySize.height >= displaySize.width) {
       layout.availableGridSize = Size(displaySize.width, displaySize.height * 0.67);
       layout.gridRect = Rect.fromLTRB(
@@ -682,10 +684,11 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Widget letterTile(String letter, double cellSize, GridRules rules, {legality = TileLegality.legal}) {
     final background = tileBackgroundColors[legality];
+    // Setting height to 0 is necessary to center the letter in the tile.
     final tileContent = (letter == "Q" && rules.qHandling == QTileHandling.qOrQu) ?
-        Text("Q/QU", textAlign: TextAlign.center, style: TextStyle(color: tileTextColor, fontSize: cellSize * 0.4))
+        Text("Q/QU", textAlign: TextAlign.center, style: TextStyle(color: tileTextColor, fontSize: cellSize * 0.4, height: 0))
         :
-        Text(letter, textAlign: TextAlign.center, style: TextStyle(color: tileTextColor, fontSize: cellSize * 0.8));
+        Text(letter, textAlign: TextAlign.center, style: TextStyle(color: tileTextColor, fontSize: cellSize * 0.8, height: 0));
     return Container(width: cellSize, height: cellSize,
         decoration: BoxDecoration(
             color: background,
