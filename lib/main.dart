@@ -13,8 +13,8 @@ import 'package:url_launcher/url_launcher.dart';
 import 'grid.dart';
 
 const appTitle = "Kumquats";
-const appVersion = "1.1.1";
-const appLegalese = "© 2022-2023 Brian Nenninger";
+const appVersion = "1.2.0";
+const appLegalese = "© 2022-2025 Brian Nenninger";
 
 void main() {
   runApp(MyApp());
