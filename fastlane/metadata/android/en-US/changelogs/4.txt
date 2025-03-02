@@ -1,0 +1,2 @@
+- Updated UI
+- Improved edge-to-edge support on Android 15+
