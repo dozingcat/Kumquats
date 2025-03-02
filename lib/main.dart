@@ -48,17 +48,6 @@ class MyHomePage extends StatefulWidget {
   _MyHomePageState createState() => _MyHomePageState();
 }
 
-// https://docs.google.com/document/d/1yohSuYrvyya5V1hB6j9pJskavCdVq9sVeTqSoEPsWH0/edit#
-final ButtonStyle raisedButtonStyle = ElevatedButton.styleFrom(
-  // onPrimary: Colors.black87,
-  // primary: Colors.grey[300],
-  minimumSize: Size(88, 36),
-  padding: EdgeInsets.symmetric(horizontal: 16),
-  shape: const RoundedRectangleBorder(
-    borderRadius: BorderRadius.all(Radius.circular(2)),
-  ),
-);
-
 enum GameMode {
   not_started,
   starting,
@@ -937,7 +926,6 @@ class _MyHomePageState extends State<MyHomePage> {
       Padding(
         padding: EdgeInsets.all(8),
         child: ElevatedButton(
-          style: raisedButtonStyle,
           onPressed: onPressed,
           child: Text(title),
         ),
@@ -1150,7 +1138,6 @@ class _MyHomePageState extends State<MyHomePage> {
                       ),
                       SizedBox(height: 20),
                       ElevatedButton(
-                        style: raisedButtonStyle,
                         onPressed: _closePreferences,
                         child: Text('OK'),
                       )
